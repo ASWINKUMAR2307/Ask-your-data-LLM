@@ -1,0 +1,1113 @@
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+
+<style>
+  :root{
+    --bg:#0F1115;
+    --panel:#171A21;
+    --panel-2:#1E222B;
+    --panel-3:#22262F;
+    --border:#2A2F3A;
+    --border-soft:#23272F;
+    --text:#E7E7E2;
+    --text-dim:#8B909C;
+    --text-faint:#5B606C;
+    --amber:#E8A33D;
+    --amber-soft:#3A2E1A;
+    --teal:#5FB3B3;
+    --red:#E2685A;
+    --green:#6FBF8B;
+    --font-display:'Space Grotesk',sans-serif;
+    --font-body:'Inter',sans-serif;
+    --font-mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--font-body);
+    -webkit-font-smoothing:antialiased;
+  }
+  #app{
+    display:grid;
+    grid-template-columns:300px 1fr;
+    height:100vh;
+    min-height:600px;
+  }
+  ::-webkit-scrollbar{width:8px;height:8px;}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+
+  /* ---------- Sidebar ---------- */
+  #sidebar{
+    background:var(--panel);
+    border-right:1px solid var(--border);
+    display:flex;
+    flex-direction:column;
+    min-width:0;
+  }
+  .brand{
+    padding:20px 18px 14px;
+    border-bottom:1px solid var(--border);
+  }
+  .brand .mark{
+    display:flex;align-items:center;gap:9px;
+  }
+  .brand .dot{
+    width:9px;height:9px;border-radius:50%;
+    background:var(--amber);
+    box-shadow:0 0 0 3px var(--amber-soft);
+  }
+  .brand h1{
+    font-family:var(--font-display);
+    font-size:16.5px;
+    font-weight:700;
+    margin:0;
+    letter-spacing:0.2px;
+  }
+  .brand p{
+    margin:6px 0 0;
+    font-size:11.5px;
+    color:var(--text-faint);
+    font-family:var(--font-mono);
+    letter-spacing:0.3px;
+  }
+  .sidebar-tabs{
+    display:flex;
+    padding:10px 14px 0;
+    gap:4px;
+    border-bottom:1px solid var(--border);
+  }
+  .stab{
+    flex:1;
+    background:none;border:none;
+    color:var(--text-faint);
+    font-family:var(--font-body);
+    font-size:12px;font-weight:600;
+    padding:9px 6px 11px;
+    cursor:pointer;
+    border-bottom:2px solid transparent;
+    transition:color .15s;
+  }
+  .stab.active{color:var(--amber);border-bottom-color:var(--amber);}
+  .stab:hover:not(.active){color:var(--text-dim);}
+
+  .sidebar-body{flex:1;overflow-y:auto;padding:14px;}
+  .sidebar-foot{
+    padding:12px 14px;border-top:1px solid var(--border);
+    font-size:11px;color:var(--text-faint);font-family:var(--font-mono);
+  }
+
+  .upload-zone{
+    border:1.5px dashed var(--border);
+    border-radius:10px;
+    padding:22px 14px;
+    text-align:center;
+    cursor:pointer;
+    transition:border-color .15s, background .15s;
+    margin-bottom:16px;
+  }
+  .upload-zone:hover, .upload-zone.drag{
+    border-color:var(--amber);
+    background:rgba(232,163,61,0.05);
+  }
+  .upload-zone svg{margin-bottom:8px;opacity:.7;}
+  .upload-zone .u-title{font-size:13px;font-weight:600;color:var(--text);}
+  .upload-zone .u-sub{font-size:11px;color:var(--text-faint);margin-top:4px;}
+
+  .section-label{
+    font-family:var(--font-mono);
+    font-size:10.5px;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    color:var(--text-faint);
+    margin:4px 0 10px;
+  }
+
+  .schema-rail{position:relative;padding-left:14px;}
+  .schema-rail::before{
+    content:'';position:absolute;left:4px;top:6px;bottom:6px;width:1px;
+    background:linear-gradient(var(--border), var(--border-soft));
+  }
+  .table-card{
+    position:relative;
+    background:var(--panel-2);
+    border:1px solid var(--border);
+    border-radius:9px;
+    padding:11px 12px;
+    margin-bottom:10px;
+  }
+  .table-card::before{
+    content:'';position:absolute;left:-14px;top:16px;width:9px;height:1px;background:var(--border);
+  }
+  .table-card::after{
+    content:'';position:absolute;left:-18px;top:12px;width:7px;height:7px;border-radius:50%;
+    background:var(--amber);box-shadow:0 0 0 3px var(--amber-soft);
+  }
+  .tc-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+  .tc-name{font-family:var(--font-mono);font-size:12.5px;font-weight:600;color:var(--amber);}
+  .tc-rows{font-size:10.5px;color:var(--text-faint);}
+  .tc-cols{display:flex;flex-direction:column;gap:3px;}
+  .tc-col{display:flex;align-items:center;justify-content:space-between;font-size:11px;}
+  .tc-col-name{color:var(--text-dim);font-family:var(--font-mono);}
+  .tc-col-type{
+    font-family:var(--font-mono);font-size:9.5px;color:var(--text-faint);
+    background:var(--panel-3);padding:1px 6px;border-radius:4px;
+  }
+  .tc-actions{display:flex;gap:6px;margin-top:9px;}
+  .tc-btn{
+    flex:1;background:var(--panel-3);border:1px solid var(--border);color:var(--text-dim);
+    font-size:10.5px;font-family:var(--font-body);font-weight:600;padding:5px 0;border-radius:6px;cursor:pointer;
+  }
+  .tc-btn:hover{color:var(--text);border-color:var(--text-faint);}
+
+  .empty-note{color:var(--text-faint);font-size:12px;line-height:1.6;padding:6px 2px;}
+
+  .hist-item{
+    padding:9px 10px;border-radius:8px;cursor:pointer;margin-bottom:6px;
+    border:1px solid transparent;
+  }
+  .hist-item:hover{background:var(--panel-2);border-color:var(--border);}
+  .hist-q{font-size:12px;color:var(--text);margin-bottom:3px;line-height:1.4;}
+  .hist-meta{font-size:10px;color:var(--text-faint);font-family:var(--font-mono);}
+
+  /* ---------- Main ---------- */
+  #main{display:flex;flex-direction:column;min-width:0;}
+  #topbar{
+    height:56px;flex:none;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 22px;border-bottom:1px solid var(--border);
+  }
+  #topbar .tb-title{font-family:var(--font-display);font-weight:600;font-size:14.5px;}
+  #topbar .tb-sub{font-size:11px;color:var(--text-faint);font-family:var(--font-mono);margin-top:2px;}
+  .tb-stats{display:flex;gap:18px;}
+  .tb-stat{text-align:right;}
+  .tb-stat .n{font-family:var(--font-mono);color:var(--amber);font-size:14px;font-weight:600;}
+  .tb-stat .l{font-size:9.5px;color:var(--text-faint);letter-spacing:.5px;text-transform:uppercase;}
+
+  #chat{flex:1;overflow-y:auto;padding:22px 22px 8px;}
+  #chat-inner{max-width:880px;margin:0 auto;display:flex;flex-direction:column;gap:16px;}
+
+  .welcome{
+    text-align:center;padding:60px 20px 30px;color:var(--text-faint);
+  }
+  .welcome h2{font-family:var(--font-display);color:var(--text);font-size:20px;margin-bottom:8px;}
+  .welcome p{font-size:13px;max-width:420px;margin:0 auto;line-height:1.6;}
+  .chip-row{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:20px;}
+  .chip{
+    background:var(--panel-2);border:1px solid var(--border);color:var(--text-dim);
+    font-size:11.5px;padding:7px 12px;border-radius:20px;cursor:pointer;font-family:var(--font-body);
+  }
+  .chip:hover{border-color:var(--amber);color:var(--amber);}
+
+  .msg{display:flex;gap:10px;max-width:100%;}
+  .msg.user{justify-content:flex-end;}
+  .bubble{
+    max-width:640px;border-radius:12px;padding:12px 14px;font-size:13.5px;line-height:1.55;
+  }
+  .msg.user .bubble{background:var(--amber);color:#1A1305;font-weight:500;border-bottom-right-radius:3px;}
+  .msg.assistant .bubble{background:var(--panel-2);border:1px solid var(--border);border-bottom-left-radius:3px;width:100%;max-width:820px;}
+  .msg.assistant{width:100%;}
+
+  .thinking{display:flex;gap:5px;padding:4px 0;}
+  .thinking span{width:6px;height:6px;background:var(--text-faint);border-radius:50%;animation:blink 1.2s infinite ease-in-out;}
+  .thinking span:nth-child(2){animation-delay:.2s;}
+  .thinking span:nth-child(3){animation-delay:.4s;}
+  @keyframes blink{0%,80%,100%{opacity:.25;}40%{opacity:1;}}
+
+  .sql-block{
+    background:#0C0E12;border:1px solid var(--border);border-radius:8px;
+    padding:10px 12px;margin:10px 0;overflow-x:auto;
+  }
+  .sql-label{font-family:var(--font-mono);font-size:9.5px;color:var(--teal);letter-spacing:1px;margin-bottom:6px;text-transform:uppercase;}
+  .sql-code{font-family:var(--font-mono);font-size:12px;color:#D7E0E0;white-space:pre-wrap;word-break:break-word;}
+  .explain-text{font-size:12.5px;color:var(--text-dim);margin-top:8px;line-height:1.55;}
+
+  .error-box{
+    background:rgba(226,104,90,0.08);border:1px solid rgba(226,104,90,0.35);
+    border-radius:8px;padding:10px 12px;margin-top:8px;font-size:12.5px;color:#F0B0A8;line-height:1.5;
+  }
+  .error-box b{color:var(--red);}
+
+  .result-wrap{margin-top:10px;}
+  .result-meta{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+  .result-count{font-size:11px;color:var(--text-faint);font-family:var(--font-mono);}
+  .result-actions{display:flex;gap:6px;}
+  .ract{
+    background:var(--panel-3);border:1px solid var(--border);color:var(--text-dim);
+    font-size:10.5px;padding:5px 9px;border-radius:6px;cursor:pointer;font-family:var(--font-body);font-weight:600;
+    display:flex;align-items:center;gap:4px;
+  }
+  .ract:hover{color:var(--amber);border-color:var(--amber);}
+
+  .table-scroll{max-height:340px;overflow:auto;border:1px solid var(--border);border-radius:8px;}
+  table.result-table{border-collapse:collapse;width:100%;font-size:12px;}
+  table.result-table th{
+    position:sticky;top:0;background:var(--panel-3);color:var(--text-dim);
+    text-align:left;padding:7px 10px;font-family:var(--font-mono);font-weight:600;
+    border-bottom:1px solid var(--border);white-space:nowrap;
+  }
+  table.result-table td{
+    padding:6px 10px;border-bottom:1px solid var(--border-soft);color:var(--text);
+    font-family:var(--font-mono);white-space:nowrap;max-width:260px;overflow:hidden;text-overflow:ellipsis;
+  }
+  table.result-table tr:hover td{background:var(--panel-2);}
+  table.result-table td.null-val{color:var(--text-faint);font-style:italic;}
+
+  .chart-panel{margin-top:10px;background:var(--panel-3);border:1px solid var(--border);border-radius:8px;padding:12px;}
+  .chart-controls{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center;}
+  .chart-controls select{
+    background:var(--panel-2);color:var(--text);border:1px solid var(--border);border-radius:6px;
+    padding:5px 8px;font-size:11.5px;font-family:var(--font-body);
+  }
+  .chart-controls label{font-size:10.5px;color:var(--text-faint);margin-right:2px;}
+  canvas.chart-canvas{max-height:280px;}
+
+  .insight-list{margin:8px 0 0;padding-left:18px;}
+  .insight-list li{font-size:12.5px;color:var(--text-dim);margin-bottom:6px;line-height:1.55;}
+
+  #inputbar{border-top:1px solid var(--border);padding:14px 22px 18px;}
+  #inputbar-inner{max-width:880px;margin:0 auto;}
+  .input-row{
+    display:flex;align-items:flex-end;gap:8px;
+    background:var(--panel-2);border:1px solid var(--border);border-radius:12px;padding:8px 8px 8px 14px;
+  }
+  .input-row:focus-within{border-color:var(--amber);}
+  #q-input{
+    flex:1;background:none;border:none;outline:none;color:var(--text);
+    font-family:var(--font-body);font-size:13.5px;resize:none;max-height:120px;line-height:1.5;padding:6px 0;
+  }
+  #q-input::placeholder{color:var(--text-faint);}
+  #send-btn{
+    background:var(--amber);border:none;color:#1A1305;width:36px;height:36px;border-radius:9px;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none;
+  }
+  #send-btn:disabled{opacity:.35;cursor:default;}
+  .input-hint{font-size:10.5px;color:var(--text-faint);margin-top:7px;text-align:center;font-family:var(--font-mono);}
+
+  .badge{
+    display:inline-block;font-family:var(--font-mono);font-size:9px;padding:1px 5px;border-radius:4px;
+    background:var(--panel-3);color:var(--teal);margin-left:6px;letter-spacing:.4px;
+  }
+
+  @media (max-width:820px){
+    #app{grid-template-columns:1fr;}
+    #sidebar{position:fixed;left:0;top:0;bottom:0;width:280px;z-index:20;transform:translateX(-100%);transition:transform .2s;}
+    #sidebar.open{transform:translateX(0);}
+  }
+</style>
+
+<div id="app">
+  <aside id="sidebar">
+    <div class="brand">
+      <div class="mark"><span class="dot"></span><h1>DataQuery</h1></div>
+      <p>SQL, in plain English</p>
+    </div>
+    <div class="sidebar-tabs">
+      <button class="stab active" data-tab="datasets">Datasets</button>
+      <button class="stab" data-tab="history">History</button>
+    </div>
+    <div class="sidebar-body">
+      <div id="tab-datasets">
+        <div class="upload-zone" id="upload-zone">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#E8A33D" stroke-width="1.6"><path d="M12 3v12m0-12l-4 4m4-4l4 4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+          <div class="u-title">Drop a CSV or Excel file</div>
+          <div class="u-sub">or click to browse — schema is detected automatically</div>
+          <input type="file" id="file-input" accept=".csv,.xlsx,.xls" multiple style="display:none">
+        </div>
+        <div class="section-label">Tables</div>
+        <div id="schema-list"><div class="empty-note">No datasets loaded yet. Upload a file to create your first table.</div></div>
+      </div>
+      <div id="tab-history" style="display:none;">
+        <div class="section-label">Query history</div>
+        <div id="history-list"><div class="empty-note">Questions you ask will show up here so you can re-run them instantly.</div></div>
+      </div>
+    </div>
+    <div class="sidebar-foot" id="engine-status">Loading SQL engine…</div>
+  </aside>
+
+  <main id="main">
+    <div id="topbar">
+      <div>
+        <div class="tb-title">Ask your data</div>
+        <div class="tb-sub" id="tb-sub">no dataset loaded</div>
+      </div>
+      <div class="tb-stats">
+        <div class="tb-stat"><div class="n" id="stat-tables">0</div><div class="l">tables</div></div>
+        <div class="tb-stat"><div class="n" id="stat-rows">0</div><div class="l">rows</div></div>
+      </div>
+    </div>
+
+    <div id="chat">
+      <div id="chat-inner">
+        <div class="welcome" id="welcome">
+          <h2>Upload a dataset to get started</h2>
+          <p>CSV or Excel in, a queryable SQL table out. Then just ask questions — DataQuery writes and runs the SQL for you.</p>
+          <div class="chip-row" id="example-chips"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="inputbar">
+      <div id="inputbar-inner">
+        <div class="input-row">
+          <textarea id="q-input" rows="1" placeholder="Upload a dataset first…" disabled></textarea>
+          <button id="send-btn" disabled>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </button>
+        </div>
+        <div class="input-hint">DataQuery only ever runs read-only SELECT queries against your uploaded data.</div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------------- State ----------------
+  const state = {
+    db: null,
+    SQL: null,
+    tables: [],        // {name, columns:[{name,type}], rowCount}
+    history: [],        // {id, nl, sql, ts, resultCols, resultRows}
+    ready: false,
+    chartCount: 0
+  };
+
+  const EXAMPLES = [
+    "Show top 10 customers by revenue",
+    "Find duplicate records",
+    "Which month generated the highest sales?",
+    "Show records with missing values",
+    "Generate a sales summary for the last quarter"
+  ];
+
+  // ---------------- DOM refs ----------------
+  const el = (id) => document.getElementById(id);
+  const chatInner = el('chat-inner');
+  const schemaList = el('schema-list');
+  const historyList = el('history-list');
+  const qInput = el('q-input');
+  const sendBtn = el('send-btn');
+  const engineStatus = el('engine-status');
+  const tbSub = el('tb-sub');
+  const statTables = el('stat-tables');
+  const statRows = el('stat-rows');
+
+  // ---------------- Init SQL engine ----------------
+  async function initEngine(){
+    try{
+      state.SQL = await initSqlJs({ locateFile: f => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${f}` });
+      state.db = new state.SQL.Database();
+      state.ready = true;
+      engineStatus.textContent = 'SQLite engine ready · in-browser';
+    }catch(e){
+      engineStatus.textContent = 'Engine failed to load — try reloading';
+      console.error(e);
+    }
+  }
+  initEngine();
+
+  // example chips
+  const chipRow = el('example-chips');
+  EXAMPLES.forEach(q=>{
+    const c = document.createElement('button');
+    c.className = 'chip';
+    c.textContent = q;
+    c.onclick = () => { if(!qInput.disabled){ qInput.value = q; qInput.focus(); autoGrow(); } };
+    chipRow.appendChild(c);
+  });
+
+  // ---------------- Sidebar tabs ----------------
+  document.querySelectorAll('.stab').forEach(btn=>{
+    btn.onclick = () => {
+      document.querySelectorAll('.stab').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      const t = btn.dataset.tab;
+      el('tab-datasets').style.display = t==='datasets' ? 'block' : 'none';
+      el('tab-history').style.display = t==='history' ? 'block' : 'none';
+    };
+  });
+
+  // ---------------- Upload handling ----------------
+  const uploadZone = el('upload-zone');
+  const fileInput = el('file-input');
+  uploadZone.onclick = () => fileInput.click();
+  ['dragover','dragenter'].forEach(ev=>uploadZone.addEventListener(ev,e=>{e.preventDefault();uploadZone.classList.add('drag');}));
+  ['dragleave','drop'].forEach(ev=>uploadZone.addEventListener(ev,e=>{e.preventDefault();uploadZone.classList.remove('drag');}));
+  uploadZone.addEventListener('drop', e=>{
+    const files = e.dataTransfer.files;
+    if(files && files.length) handleFiles(files);
+  });
+  fileInput.addEventListener('change', e=>{
+    if(e.target.files && e.target.files.length) handleFiles(e.target.files);
+    fileInput.value = '';
+  });
+
+  async function handleFiles(fileList){
+    if(!state.ready){ alert('SQL engine is still loading, try again in a second.'); return; }
+    for(const file of Array.from(fileList)){
+      try{
+        await ingestFile(file);
+      }catch(err){
+        console.error(err);
+        addAssistantError(`Could not load <b>${escapeHtml(file.name)}</b>: ${escapeHtml(err.message||String(err))}`);
+      }
+    }
+    renderSchemaList();
+    renderTopStats();
+    refreshInputState();
+  }
+
+  function parseCSVFile(file){
+    return new Promise((resolve,reject)=>{
+      Papa.parse(file, {
+        skipEmptyLines:true,
+        complete: res => {
+          if(!res.data || !res.data.length) return reject(new Error('File appears to be empty'));
+          const headers = res.data[0].map(h=>String(h||'').trim());
+          const rows = res.data.slice(1).filter(r=>r.some(c=>String(c||'').trim()!==''));
+          resolve({headers, rows});
+        },
+        error: err => reject(err)
+      });
+    });
+  }
+
+  function parseExcelFile(file){
+    return new Promise((resolve,reject)=>{
+      const reader = new FileReader();
+      reader.onload = (e)=>{
+        try{
+          const wb = XLSX.read(e.target.result, {type:'array'});
+          const sheetName = wb.SheetNames[0];
+          const sheet = wb.Sheets[sheetName];
+          const aoa = XLSX.utils.sheet_to_json(sheet, {header:1, raw:true, defval:''});
+          if(!aoa.length) return reject(new Error('Sheet appears to be empty'));
+          const headers = aoa[0].map(h=>String(h||'').trim());
+          const rows = aoa.slice(1).filter(r=>r.some(c=>String(c||'').trim()!==''));
+          resolve({headers, rows});
+        }catch(err){ reject(err); }
+      };
+      reader.onerror = () => reject(new Error('Could not read file'));
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
+  function sanitizeIdent(raw, usedSet, fallbackPrefix){
+    let s = String(raw||'').trim().toLowerCase().replace(/[^a-z0-9_]+/g,'_').replace(/^_+|_+$/g,'');
+    if(!s) s = fallbackPrefix || 'col';
+    if(/^[0-9]/.test(s)) s = 'c_' + s;
+    let base = s, i = 2;
+    while(usedSet.has(s)){ s = base + '_' + i; i++; }
+    usedSet.add(s);
+    return s;
+  }
+
+  function inferColumnType(values){
+    let seenAny=false, allInt=true, allNum=true;
+    for(const raw of values){
+      if(raw===null||raw===undefined) continue;
+      const s = String(raw).trim();
+      if(s==='') continue;
+      seenAny = true;
+      if(!/^-?\d+$/.test(s)) allInt = false;
+      if(!/^-?\d+(\.\d+)?([eE]-?\d+)?$/.test(s)) allNum = false;
+      if(!allInt && !allNum) break;
+    }
+    if(!seenAny) return 'TEXT';
+    if(allInt) return 'INTEGER';
+    if(allNum) return 'REAL';
+    return 'TEXT';
+  }
+
+  async function ingestFile(file){
+    const isExcel = /\.(xlsx|xls)$/i.test(file.name);
+    const parsed = isExcel ? await parseExcelFile(file) : await parseCSVFile(file);
+    const { headers, rows } = parsed;
+
+    const usedCols = new Set();
+    const colNames = headers.map((h,i)=>sanitizeIdent(h, usedCols, 'col_'+(i+1)));
+
+    const colTypes = colNames.map((_,ci)=>{
+      const sample = rows.slice(0,200).map(r=>r[ci]);
+      return inferColumnType(sample);
+    });
+
+    const usedTables = new Set(state.tables.map(t=>t.name));
+    const baseName = file.name.replace(/\.[^.]+$/,'');
+    const tableName = sanitizeIdent(baseName, usedTables, 'dataset');
+
+    const q = (s) => '"' + String(s).replace(/"/g,'""') + '"';
+    const createSql = `CREATE TABLE ${q(tableName)} (` +
+      colNames.map((c,i)=>`${q(c)} ${colTypes[i]}`).join(', ') + `);`;
+    state.db.run(createSql);
+
+    const placeholders = colNames.map(()=>'?').join(',');
+    const insertSql = `INSERT INTO ${q(tableName)} (${colNames.map(q).join(',')}) VALUES (${placeholders});`;
+    const stmt = state.db.prepare(insertSql);
+    state.db.run('BEGIN TRANSACTION;');
+    let inserted = 0;
+    for(const row of rows){
+      const vals = colNames.map((_,i)=>{
+        let v = row[i];
+        if(v===undefined||v===null) return null;
+        v = String(v).trim();
+        if(v==='') return null;
+        if(colTypes[i]==='INTEGER') return /^-?\d+$/.test(v) ? parseInt(v,10) : null;
+        if(colTypes[i]==='REAL') return /^-?\d+(\.\d+)?([eE]-?\d+)?$/.test(v) ? parseFloat(v) : null;
+        return v;
+      });
+      stmt.run(vals);
+      inserted++;
+    }
+    state.db.run('COMMIT;');
+    stmt.free();
+
+    state.tables.push({
+      name: tableName,
+      columns: colNames.map((c,i)=>({name:c, type:colTypes[i]})),
+      rowCount: inserted,
+      sourceFile: file.name
+    });
+
+    hideWelcomeIfNeeded();
+    addSystemNote(`Loaded <b>${escapeHtml(file.name)}</b> → table <span class="badge">${escapeHtml(tableName)}</span> with ${inserted} rows and ${colNames.length} columns.`);
+  }
+
+  // ---------------- Schema panel ----------------
+  function renderSchemaList(){
+    if(!state.tables.length){
+      schemaList.innerHTML = '<div class="empty-note">No datasets loaded yet. Upload a file to create your first table.</div>';
+      return;
+    }
+    schemaList.innerHTML = '<div class="schema-rail"></div>';
+    const rail = schemaList.querySelector('.schema-rail');
+    state.tables.forEach(t=>{
+      const card = document.createElement('div');
+      card.className = 'table-card';
+      card.innerHTML = `
+        <div class="tc-head">
+          <div class="tc-name">${escapeHtml(t.name)}</div>
+          <div class="tc-rows">${t.rowCount} rows</div>
+        </div>
+        <div class="tc-cols">
+          ${t.columns.map(c=>`<div class="tc-col"><span class="tc-col-name">${escapeHtml(c.name)}</span><span class="tc-col-type">${c.type}</span></div>`).join('')}
+        </div>
+        <div class="tc-actions">
+          <button class="tc-btn" data-act="insights" data-table="${escapeHtml(t.name)}">Insights</button>
+          <button class="tc-btn" data-act="preview" data-table="${escapeHtml(t.name)}">Preview</button>
+        </div>
+      `;
+      rail.appendChild(card);
+    });
+    rail.querySelectorAll('.tc-btn').forEach(b=>{
+      b.onclick = () => {
+        const table = b.dataset.table;
+        if(b.dataset.act === 'insights') generateInsights(table);
+        else previewTable(table);
+      };
+    });
+  }
+
+  function renderTopStats(){
+    statTables.textContent = state.tables.length;
+    statRows.textContent = state.tables.reduce((a,t)=>a+t.rowCount,0);
+    tbSub.textContent = state.tables.length ? state.tables.map(t=>t.name).join(' · ') : 'no dataset loaded';
+  }
+
+  function refreshInputState(){
+    const has = state.tables.length > 0;
+    qInput.disabled = !has;
+    sendBtn.disabled = !has;
+    qInput.placeholder = has ? 'Ask a question about your data…' : 'Upload a dataset first…';
+  }
+
+  function hideWelcomeIfNeeded(){
+    const w = el('welcome');
+    if(w) w.remove();
+  }
+
+  // ---------------- Chat rendering helpers ----------------
+  function scrollToBottom(){ el('chat').scrollTop = el('chat').scrollHeight; }
+
+  function addUserMessage(text){
+    const wrap = document.createElement('div');
+    wrap.className = 'msg user';
+    wrap.innerHTML = `<div class="bubble">${escapeHtml(text)}</div>`;
+    chatInner.appendChild(wrap);
+    scrollToBottom();
+  }
+
+  function addSystemNote(html){
+    const wrap = document.createElement('div');
+    wrap.className = 'msg assistant';
+    wrap.innerHTML = `<div class="bubble" style="font-size:12px;color:var(--text-dim);">${html}</div>`;
+    chatInner.appendChild(wrap);
+    scrollToBottom();
+  }
+
+  function addAssistantThinking(){
+    const wrap = document.createElement('div');
+    wrap.className = 'msg assistant';
+    wrap.innerHTML = `<div class="bubble"><div class="thinking"><span></span><span></span><span></span></div></div>`;
+    chatInner.appendChild(wrap);
+    scrollToBottom();
+    return wrap;
+  }
+
+  function addAssistantError(html){
+    const wrap = document.createElement('div');
+    wrap.className = 'msg assistant';
+    wrap.innerHTML = `<div class="bubble"><div class="error-box"><b>Couldn't complete that.</b><br>${html}</div></div>`;
+    chatInner.appendChild(wrap);
+    scrollToBottom();
+  }
+
+  // ---------------- Secure Backend AI API Call ----------------
+  async function callClaude(system, user, maxTokens){
+    // This now securely points to your FastAPI backend instead of the browser
+    const response = await fetch("http://127.0.0.1:8000/api/ai-query", {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        system: system,
+        prompt: user,
+        max_tokens: maxTokens || 1000
+      })
+    });
+    
+    if(!response.ok){
+      const t = await response.text().catch(() => '');
+      throw new Error('AI request failed (' + response.status + ') ' + t.slice(0, 200));
+    }
+    
+    const data = await response.json();
+    return data.text; 
+  }
+
+  function buildSchemaContext(){
+    return state.tables.map(t=>{
+      const cols = t.columns.map(c=>`${c.name} (${c.type})`).join(', ');
+      let sample = '';
+      try{
+        const res = state.db.exec(`SELECT * FROM "${t.name.replace(/"/g,'""')}" LIMIT 2;`);
+        if(res.length){
+          sample = res[0].values.map(r=>JSON.stringify(r)).join(' | ');
+        }
+      }catch(e){}
+      return `Table "${t.name}" (${t.rowCount} rows) — columns: ${cols}\nSample rows: ${sample}`;
+    }).join('\n\n');
+  }
+
+  function stripFences(s){
+    return s.replace(/^```[a-zA-Z]*\s*/,'').replace(/```\s*$/,'').trim();
+  }
+
+  async function nlToSql(question){
+    const system = `You are a SQLite query generator for a natural-language analytics tool.
+You will be given a database schema and a user question in plain English.
+Reply with ONLY a single JSON object, no markdown fences, no commentary, in this exact shape:
+{"sql": "<a single read-only SQLite SELECT or WITH...SELECT statement>", "explanation": "<one short plain-English sentence describing what the query does>"}
+Rules:
+- Only ever produce SELECT or WITH...SELECT statements. Never DDL or DML.
+- Use only the tables/columns given in the schema. Quote identifiers with double quotes if needed.
+- Use SQLite syntax (e.g. strftime for dates stored as text).
+- Do not include a trailing semicolon inside the JSON string value if avoidable; if included it's fine as long as it's the only statement.
+- If the question is ambiguous, make the most reasonable interpretation and proceed — do not ask a follow-up question.`;
+    const user = `Schema:\n${buildSchemaContext()}\n\nQuestion: ${question}`;
+    const raw = await callClaude(system, user, 700);
+    const cleaned = stripFences(raw);
+    let parsed;
+    try{
+      parsed = JSON.parse(cleaned);
+    }catch(e){
+      const m = cleaned.match(/"sql"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+      if(m){
+        parsed = { sql: JSON.parse('"'+m[1]+'"'), explanation: '' };
+      } else {
+        throw new Error('The AI response could not be parsed into a query.');
+      }
+    }
+    if(!parsed.sql) throw new Error('The AI did not return a query.');
+    return parsed;
+  }
+
+  function validateSql(sql){
+    let s = sql.trim();
+    if(s.endsWith(';')) s = s.slice(0,-1).trim();
+    if(/;/.test(s)){
+      throw new Error('Only a single statement is allowed.');
+    }
+    if(!/^(select|with)\b/i.test(s)){
+      throw new Error('Only SELECT queries are allowed for safety.');
+    }
+    const banned = /\b(drop|delete|insert|update|alter|attach|detach|pragma|truncate|create|replace|vacuum|reindex)\b/i;
+    if(banned.test(s)){
+      throw new Error('That query touches restricted keywords and was blocked for safety.');
+    }
+    return s;
+  }
+
+  function executeSql(sql){
+    const res = state.db.exec(sql);
+    if(!res.length) return { columns: [], rows: [] };
+    return { columns: res[0].columns, rows: res[0].values };
+  }
+
+  // ---------------- Result rendering (table/chart/export) ----------------
+  function renderResultBlock(container, columns, rows, sqlForExport){
+    const wrap = document.createElement('div');
+    wrap.className = 'result-wrap';
+
+    const shown = rows.slice(0,200);
+    const meta = document.createElement('div');
+    meta.className = 'result-meta';
+    meta.innerHTML = `<div class="result-count">${rows.length} row${rows.length===1?'':'s'}${rows.length>200?' · showing first 200':''}</div>`;
+    const actions = document.createElement('div');
+    actions.className = 'result-actions';
+
+    if(rows.length){
+      const btnViz = mkRact('Visualize', () => toggleChart(wrap, columns, rows));
+      const btnCsv = mkRact('CSV', () => exportCSV(columns, rows));
+      const btnXlsx = mkRact('Excel', () => exportExcel(columns, rows));
+      const btnPdf = mkRact('Print / PDF', () => exportPrint(columns, rows));
+      actions.append(btnViz, btnCsv, btnXlsx, btnPdf);
+    }
+    meta.appendChild(actions);
+    wrap.appendChild(meta);
+
+    if(!rows.length){
+      const none = document.createElement('div');
+      none.style.cssText = 'font-size:12.5px;color:var(--text-faint);padding:6px 0;';
+      none.textContent = 'Query ran successfully and returned no rows.';
+      wrap.appendChild(none);
+      return wrap;
+    }
+
+    const scrollDiv = document.createElement('div');
+    scrollDiv.className = 'table-scroll';
+    const table = document.createElement('table');
+    table.className = 'result-table';
+    const thead = document.createElement('thead');
+    thead.innerHTML = '<tr>' + columns.map(c=>`<th>${escapeHtml(c)}</th>`).join('') + '</tr>';
+    const tbody = document.createElement('tbody');
+    shown.forEach(r=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = r.map(v=> v===null ? `<td class="null-val">null</td>` : `<td>${escapeHtml(String(v))}</td>`).join('');
+      tbody.appendChild(tr);
+    });
+    table.append(thead, tbody);
+    scrollDiv.appendChild(table);
+    wrap.appendChild(scrollDiv);
+    return wrap;
+  }
+
+  function mkRact(label, onClick){
+    const b = document.createElement('button');
+    b.className = 'ract';
+    b.textContent = label;
+    b.onclick = onClick;
+    return b;
+  }
+
+  function toggleChart(wrap, columns, rows){
+    let panel = wrap.querySelector('.chart-panel');
+    if(panel){ panel.remove(); return; }
+    panel = document.createElement('div');
+    panel.className = 'chart-panel';
+    state.chartCount++;
+    const canvasId = 'chart_' + state.chartCount;
+    panel.innerHTML = `
+      <div class="chart-controls">
+        <label>X</label>
+        <select class="cx-x">${columns.map((c,i)=>`<option value="${i}">${escapeHtml(c)}</option>`).join('')}</select>
+        <label>Y</label>
+        <select class="cx-y">${columns.map((c,i)=>`<option value="${i}" ${i===1?'selected':''}>${escapeHtml(c)}</option>`).join('')}</select>
+        <label>Type</label>
+        <select class="cx-type">
+          <option value="bar">Bar</option>
+          <option value="line">Line</option>
+          <option value="pie">Pie</option>
+        </select>
+      </div>
+      <canvas class="chart-canvas" id="${canvasId}"></canvas>
+    `;
+    wrap.appendChild(panel);
+    let chartInst = null;
+    const draw = () => {
+      const xi = parseInt(panel.querySelector('.cx-x').value,10);
+      const yi = parseInt(panel.querySelector('.cx-y').value,10);
+      const type = panel.querySelector('.cx-type').value;
+      const labels = rows.slice(0,50).map(r=>String(r[xi]));
+      const data = rows.slice(0,50).map(r=>{ const n = parseFloat(r[yi]); return isNaN(n)?0:n; });
+      const ctx = document.getElementById(canvasId);
+      if(chartInst) chartInst.destroy();
+      chartInst = new Chart(ctx, {
+        type: type,
+        data: { labels, datasets: [{ label: columns[yi], data, backgroundColor: '#E8A33D', borderColor:'#E8A33D', backgroundColor: type==='pie' ? ['#E8A33D','#5FB3B3','#6FBF8B','#E2685A','#8B7FD1','#D18FBF'] : 'rgba(232,163,61,0.55)' }] },
+        options: {
+          responsive:true,
+          plugins:{ legend:{ labels:{ color:'#8B909C' } } },
+          scales: type==='pie' ? {} : {
+            x:{ ticks:{ color:'#8B909C' }, grid:{ color:'#23272F' } },
+            y:{ ticks:{ color:'#8B909C' }, grid:{ color:'#23272F' } }
+          }
+        }
+      });
+    };
+    panel.querySelectorAll('select').forEach(s=>s.addEventListener('change', draw));
+    draw();
+  }
+
+  function toCsvString(columns, rows){
+    const esc = (v) => {
+      if(v===null||v===undefined) return '';
+      const s = String(v);
+      return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+    };
+    return [columns.map(esc).join(','), ...rows.map(r=>r.map(esc).join(','))].join('\n');
+  }
+
+  function downloadBlob(content, filename, type){
+    const blob = new Blob([content], {type});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function exportCSV(columns, rows){
+    downloadBlob(toCsvString(columns, rows), `query_result_${Date.now()}.csv`, 'text/csv');
+  }
+
+  function exportExcel(columns, rows){
+    const ws = XLSX.utils.aoa_to_sheet([columns, ...rows]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Results');
+    XLSX.writeFile(wb, `query_result_${Date.now()}.xlsx`);
+  }
+
+  function exportPrint(columns, rows){
+    const w = window.open('', '_blank');
+    const rowsHtml = rows.map(r=>'<tr>'+r.map(v=>`<td>${v===null?'':escapeHtml(String(v))}</td>`).join('')+'</tr>').join('');
+    w.document.write(`
+      <html><head><title>Query Result</title>
+      <style>
+        body{font-family:Arial,sans-serif;padding:24px;color:#111;}
+        table{border-collapse:collapse;width:100%;font-size:12px;}
+        th,td{border:1px solid #ccc;padding:6px 8px;text-align:left;}
+        th{background:#f2f2f2;}
+      </style></head><body>
+      <h3>Query Result — ${rows.length} rows</h3>
+      <table><thead><tr>${columns.map(c=>`<th>${escapeHtml(c)}</th>`).join('')}</tr></thead>
+      <tbody>${rowsHtml}</tbody></table>
+      </body></html>
+    `);
+    w.document.close();
+    w.focus();
+    setTimeout(()=>w.print(), 300);
+  }
+
+  function previewTable(tableName){
+    hideWelcomeIfNeeded();
+    const q = '"' + tableName.replace(/"/g,'""') + '"';
+    try{
+      const { columns, rows } = executeSql(`SELECT * FROM ${q} LIMIT 50;`);
+      const wrap = document.createElement('div');
+      wrap.className = 'msg assistant';
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.innerHTML = `<div class="sql-label">Preview · ${escapeHtml(tableName)}</div>`;
+      bubble.appendChild(renderResultBlock(document.createElement('div'), columns, rows));
+      wrap.appendChild(bubble);
+      chatInner.appendChild(wrap);
+      scrollToBottom();
+    }catch(e){
+      addAssistantError(escapeHtml(e.message||String(e)));
+    }
+  }
+
+  // ---------------- Insights ----------------
+  async function generateInsights(tableName){
+    hideWelcomeIfNeeded();
+    const table = state.tables.find(t=>t.name===tableName);
+    if(!table) return;
+    const thinking = addAssistantThinking();
+
+    try{
+      const q = '"' + tableName.replace(/"/g,'""') + '"';
+      const qc = (c) => '"' + c.replace(/"/g,'""') + '"';
+      const statsParts = table.columns.map(c=>{
+        const nullExpr = `SUM(CASE WHEN ${qc(c.name)} IS NULL THEN 1 ELSE 0 END) AS nulls_${c.name}`;
+        if(c.type!=='TEXT'){
+          return `${nullExpr}, MIN(${qc(c.name)}) AS min_${c.name}, MAX(${qc(c.name)}) AS max_${c.name}, AVG(${qc(c.name)}) AS avg_${c.name}`;
+        }
+        return `${nullExpr}, COUNT(DISTINCT ${qc(c.name)}) AS distinct_${c.name}`;
+      }).join(', ');
+      const statSql = `SELECT COUNT(*) AS total_rows, ${statsParts} FROM ${q};`;
+      const statRes = executeSql(statSql);
+      const statsObj = {};
+      statRes.columns.forEach((c,i)=>statsObj[c] = statRes.rows[0][i]);
+
+      const dupSql = `SELECT COUNT(*) FROM (SELECT ${table.columns.map(c=>qc(c.name)).join(',')}, COUNT(*) c FROM ${q} GROUP BY ${table.columns.map(c=>qc(c.name)).join(',')} HAVING c > 1);`;
+      let dupCount = 0;
+      try{ const d = executeSql(dupSql); dupCount = d.rows[0][0]; }catch(e){}
+
+      const system = `You are a data analyst. Given computed statistics about a dataset, write 4-6 short, concrete bullet-point insights a business user would care about: data quality issues (nulls, duplicates), notable ranges/averages, and anything worth investigating. Be specific and reference actual numbers given. Do not invent numbers not present in the stats. Reply with ONLY a JSON array of short strings, no markdown fences, e.g. ["...", "..."].`;
+      const user = `Table "${tableName}", ${table.rowCount} rows.\nColumns: ${table.columns.map(c=>`${c.name} (${c.type})`).join(', ')}\nStats: ${JSON.stringify(statsObj)}\nDuplicate row groups: ${dupCount}`;
+      const raw = await callClaude(system, user, 600);
+      let bullets;
+      try{ bullets = JSON.parse(stripFences(raw)); }
+      catch(e){ bullets = stripFences(raw).split('\n').filter(Boolean); }
+
+      thinking.remove();
+      const wrap = document.createElement('div');
+      wrap.className = 'msg assistant';
+      wrap.innerHTML = `<div class="bubble">
+        <div class="sql-label">AI insights · ${escapeHtml(tableName)}</div>
+        <ul class="insight-list">${bullets.map(b=>`<li>${escapeHtml(String(b))}</li>`).join('')}</ul>
+      </div>`;
+      chatInner.appendChild(wrap);
+      scrollToBottom();
+    }catch(e){
+      thinking.remove();
+      addAssistantError(escapeHtml(e.message||String(e)));
+    }
+  }
+
+  // ---------------- History ----------------
+  function pushHistory(item){
+    state.history.unshift(item);
+    renderHistory();
+  }
+
+  function renderHistory(){
+    if(!state.history.length){
+      historyList.innerHTML = '<div class="empty-note">Questions you ask will show up here so you can re-run them instantly.</div>';
+      return;
+    }
+    historyList.innerHTML = '';
+    state.history.forEach(h=>{
+      const d = document.createElement('div');
+      d.className = 'hist-item';
+      d.innerHTML = `<div class="hist-q">${escapeHtml(h.nl)}</div><div class="hist-meta">${new Date(h.ts).toLocaleTimeString()}</div>`;
+      d.onclick = () => rerunFromHistory(h);
+      historyList.appendChild(d);
+    });
+  }
+
+  function rerunFromHistory(h){
+    hideWelcomeIfNeeded();
+    addUserMessage(h.nl);
+    try{
+      const { columns, rows } = executeSql(h.sql);
+      const wrap = document.createElement('div');
+      wrap.className = 'msg assistant';
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.innerHTML = `<div class="sql-label">Re-ran from history</div><div class="sql-code">${escapeHtml(h.sql)}</div>`;
+      bubble.appendChild(renderResultBlock(document.createElement('div'), columns, rows));
+      wrap.appendChild(bubble);
+      chatInner.appendChild(wrap);
+      scrollToBottom();
+    }catch(e){
+      addAssistantError(escapeHtml(e.message||String(e)));
+    }
+  }
+
+  // ---------------- Main ask flow ----------------
+  async function handleAsk(question){
+    hideWelcomeIfNeeded();
+    addUserMessage(question);
+    const thinking = addAssistantThinking();
+
+    let parsed;
+    try{
+      parsed = await nlToSql(question);
+    }catch(e){
+      thinking.remove();
+      addAssistantError(`I couldn't turn that into a query. ${escapeHtml(e.message||String(e))} Try rephrasing your question.`);
+      return;
+    }
+
+    let safeSql;
+    try{
+      safeSql = validateSql(parsed.sql);
+    }catch(e){
+      thinking.remove();
+      addAssistantError(`The generated query was blocked by validation: <b>${escapeHtml(e.message)}</b><div class="sql-block"><div class="sql-label">Rejected SQL</div><div class="sql-code">${escapeHtml(parsed.sql)}</div></div>`);
+      return;
+    }
+
+    let result;
+    try{
+      result = executeSql(safeSql);
+    }catch(e){
+      thinking.remove();
+      addAssistantError(`The query failed to execute: <b>${escapeHtml(e.message||String(e))}</b><div class="sql-block"><div class="sql-label">SQL</div><div class="sql-code">${escapeHtml(safeSql)}</div></div>Try rephrasing — for example naming the exact table or column you mean.`);
+      return;
+    }
+
+    thinking.remove();
+    const wrap = document.createElement('div');
+    wrap.className = 'msg assistant';
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.innerHTML = `
+      <div class="sql-block">
+        <div class="sql-label">Generated SQL</div>
+        <div class="sql-code">${escapeHtml(safeSql)}</div>
+      </div>
+      ${parsed.explanation ? `<div class="explain-text">${escapeHtml(parsed.explanation)}</div>` : ''}
+    `;
+    bubble.appendChild(renderResultBlock(document.createElement('div'), result.columns, result.rows));
+    wrap.appendChild(bubble);
+    chatInner.appendChild(wrap);
+    scrollToBottom();
+
+    pushHistory({ id: Date.now(), nl: question, sql: safeSql, ts: Date.now() });
+  }
+
+  // ---------------- Input wiring ----------------
+  function autoGrow(){
+    qInput.style.height = 'auto';
+    qInput.style.height = Math.min(qInput.scrollHeight, 120) + 'px';
+  }
+  qInput.addEventListener('input', autoGrow);
+  qInput.addEventListener('keydown', (e)=>{
+    if(e.key==='Enter' && !e.shiftKey){
+      e.preventDefault();
+      submitQuestion();
+    }
+  });
+  sendBtn.addEventListener('click', submitQuestion);
+
+  function submitQuestion(){
+    const val = qInput.value.trim();
+    if(!val || qInput.disabled) return;
+    qInput.value = '';
+    autoGrow();
+    handleAsk(val);
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  renderSchemaList();
+  renderTopStats();
+  refreshInputState();
+})();
+</script>
