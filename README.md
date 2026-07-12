@@ -120,6 +120,3 @@ LayerTechnologyIn‑browser databasesql.js (SQLite compiled to WebAssembly)File 
 
 if you plan to accept contributions or public use.
 
-🙋 Author
-
-Built by ASWINKUMAR2307.
